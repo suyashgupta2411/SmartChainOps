@@ -1,0 +1,55 @@
+<<<<<<< HEAD
+version: "3"
+=======
+version: "3.8"
+
+>>>>>>> be61c11 (Error resolve)
+services:
+  backend:
+    build:
+      context: ./backend
+    ports:
+      - "5000:5000"
+<<<<<<< HEAD
+    environment:
+      - MONGO_URI=mongodb://mongo:27017/smartchainops
+      - JWT_SECRET=your_jwt_secret
+    depends_on:
+      - mongo
+
+  frontend:
+    image: node:14-alpine # Use the official Node image to run the frontend
+    working_dir: /app
+    volumes:
+      - ./frontend:/app
+    command: sh -c "npm install && npm run dev"
+    ports:
+      - "3000:3000"
+
+  mongo:
+    image: mongo
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+
+volumes:
+  mongo_data:
+=======
+    env_file:
+      - .env
+    networks:
+      - app-network
+
+  frontend:
+    build:
+      context: ./frontend
+    ports:
+      - "3000:3000"
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
+>>>>>>> be61c11 (Error resolve)
