@@ -1,5 +1,4 @@
 const express = require("express");
-<<<<<<< HEAD
 const mongoose = require("mongoose");
 const dotenv = require("dotenv");
 const cors = require("cors");
@@ -26,7 +25,6 @@ app.use("/api/auth", authRoutes);
 app.use("/api/deploy", deploymentRoutes);
 
 const PORT = process.env.PORT || 5000;
-=======
 const dotenv = require("dotenv");
 const connectDB = require("./config/db");
 const cors = require("cors");
@@ -44,5 +42,4 @@ app.use("/api/deploy", require("./routes/deployRoutes"));
 
 const PORT = process.env.PORT || 5000;
 
->>>>>>> be61c11 (Error resolve)
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
