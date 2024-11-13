@@ -25,7 +25,7 @@ exports.register = async (req, res) => {
     console.error(err.message);
     res.status(500).send('Server error');
   }
-};
+};h
 
 exports.login = async (req, res) => {
   const { username, password } = req.body;
