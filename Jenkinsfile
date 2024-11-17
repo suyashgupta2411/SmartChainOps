@@ -1,40 +1,30 @@
 pipeline {
     agent any
-    parameters {
-        string(name: 'GITHUB_REPO', defaultValue: '', description: 'GitHub repository link')
-    }
+
     environment {
-        IMAGE_NAME = 'smartchainops'
-        DOCKER_REGISTRY = 'suyashgupta1'  // replace with your DockerHub username or registry
+        RAILWAY_TOKEN = '5e7bf088-6764-4fcd-9503-a5c050db2a85'
     }
+
     stages {
         stage('Clone Repository') {
             steps {
-                git branch: 'main', url: "${params.GITHUB_REPO}"
+                checkout scm
             }
         }
-        stage('Build Docker Image') {
+        stage('Build and Push Docker Images') {
             steps {
                 script {
-                    // Build the Docker image
-                    docker.build("${env.IMAGE_NAME}")
+                    sh 'docker build -t smartchainops-frontend ./frontend'
+                    sh 'docker build -t smartchainops-backend ./backend'
                 }
             }
         }
-        stage('Push Docker Image') {
+        stage('Deploy to Railway') {
             steps {
                 script {
-                    // Log in to DockerHub (you may use Jenkins Credentials for safer authentication)
-                    docker.withRegistry('', 'dockerhub-credentials-id') {
-                        docker.image("${env.IMAGE_NAME}").push("latest")
-                    }
+                    sh './railway-deploy.sh'
                 }
             }
-        }
-    }
-    post {
-        success {
-            echo "Docker image is available at https://hub.docker.com/r/${env.DOCKER_REGISTRY}/${env.IMAGE_NAME}"
         }
     }
 }
