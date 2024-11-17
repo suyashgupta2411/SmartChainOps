@@ -1,49 +1,40 @@
 pipeline {
     agent any
-
-    environment {
-        DOCKERHUB_CREDENTIALS = credentials('dockerhub-credentials') // Set up Docker Hub credentials in Jenkins
+    parameters {
+        string(name: 'GITHUB_REPO', defaultValue: '', description: 'GitHub repository link')
     }
-
+    environment {
+        IMAGE_NAME = 'smartchainops'
+        DOCKER_REGISTRY = 'suyashgupta1'  // replace with your DockerHub username or registry
+    }
     stages {
-        stage('Checkout Code') {
+        stage('Clone Repository') {
             steps {
-                // Checkout code from GitHub repository
-                git url: 'https://github.com/username/repo.git', branch: 'main'
+                git branch: 'main', url: "${params.GITHUB_REPO}"
             }
         }
-
         stage('Build Docker Image') {
             steps {
                 script {
-                    // Build Docker image
-                    docker.build('username/smartchainops:${BUILD_NUMBER}')
+                    // Build the Docker image
+                    docker.build("${env.IMAGE_NAME}")
                 }
             }
         }
-
         stage('Push Docker Image') {
             steps {
                 script {
-                    // Login to Docker Hub
-                    docker.withRegistry('https://index.docker.io/v1/', 'dockerhub-credentials') {
-                        // Push Docker image to Docker Hub
-                        docker.image('username/smartchainops:${BUILD_NUMBER}').push()
+                    // Log in to DockerHub (you may use Jenkins Credentials for safer authentication)
+                    docker.withRegistry('', 'dockerhub-credentials-id') {
+                        docker.image("${env.IMAGE_NAME}").push("latest")
                     }
                 }
             }
         }
-
-        stage('Deploy') {
-            steps {
-                sh './deploy.sh'
-            }
-        }
     }
-
     post {
-        always {
-            cleanWs()
+        success {
+            echo "Docker image is available at https://hub.docker.com/r/${env.DOCKER_REGISTRY}/${env.IMAGE_NAME}"
         }
     }
 }
