@@ -1,0 +1,10 @@
+# Node.js dependencies
+node_modules/
+
+# Next.js build files
+.next/
+
+# Logs and temporary files
+*.log
+*.env
+.DS_Store
