@@ -1,12 +1,8 @@
 const express = require("express");
-const {
-  createDeployment,
-  getDeployments,
-} = require("../controllers/deployController");
-const auth = require("../middleware/authMiddleware");
+const { buildAndPushDockerImage } = require("../controllers/deployController");
 const router = express.Router();
 
-router.post("/create", auth, createDeployment);
-router.get("/", auth, getDeployments);
+// Route for building and pushing Docker image
+router.post("/", buildAndPushDockerImage);
 
 module.exports = router;
