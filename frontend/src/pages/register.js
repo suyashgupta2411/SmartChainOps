@@ -63,7 +63,7 @@ const Register = () => {
           />
           <button
             type="submit"
-            className="bg-orange-500 text-white p-4 rounded-full w-full text-lg transition-all hover:bg-orange-600"
+            className="bg-orange-700 text-white p-4 rounded-full w-full text-lg transition-all hover:bg-orange-600"
           >
             Register
           </button>
@@ -71,7 +71,7 @@ const Register = () => {
         <p className="text-white mt-4 text-lg">
           Already have an account?{" "}
           <Link href="/login" legacyBehavior>
-            <a className="text-orange-500 hover:text-orange-600">Login here</a>
+            <a className="text-orange-700 hover:text-orange-500">Login here</a>
           </Link>
         </p>
       </div>

@@ -60,7 +60,7 @@ const Login = () => {
         <p className="text-white mt-4 text-lg">
           Not yet registered?{" "}
           <Link href="/register" legacyBehavior>
-            <a className="text-orange-500 hover:text-orange-600">
+            <a className="text-orange-700 hover:text-orange-600">
               Register here
             </a>
           </Link>

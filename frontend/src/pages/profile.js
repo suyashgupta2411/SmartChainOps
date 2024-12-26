@@ -1,23 +1,31 @@
-import { useRecoilState } from "recoil";
-import authAtom from "../atoms/authAtom";
-import Navbar from "../components/Navbar";
+import { useState, useEffect } from "react";
+import axios from "axios";
 
 const Profile = () => {
-  const [auth] = useRecoilState(authAtom);
+  const [userData, setUserData] = useState(null);
+
+  useEffect(() => {
+    // Fetch user profile data (name, number of deployments)
+    axios
+      .get("/api/user/profile")
+      .then((response) => {
+        setUserData(response.data);
+      })
+      .catch((error) => {
+        console.error("Error fetching profile:", error);
+      });
+  }, []);
+
+  if (!userData) return <div>Loading...</div>;
 
   return (
-    <div
-      className="h-screen bg-cover bg-center bg-no-repeat"
-      style={{ backgroundImage: "url('/assets/bg-image.jpg')" }}
-    >
-      <Navbar />
-      <div className="container mx-auto py-10">
-        <h1 className="text-white text-3xl mb-6">Profile</h1>
-        <div className="bg-gray-800 p-8 rounded-lg shadow-lg">
-          <p className="text-white">
-            Username: {auth.token ? "User" : "Anonymous"}
-          </p>
-        </div>
+    <div className="container mx-auto p-8">
+      <div className="bg-gray-800 text-white p-6 rounded-lg shadow-lg">
+        <h1 className="text-3xl font-bold">Profile</h1>
+        <p className="mt-4 text-lg">Name: {userData.name}</p>
+        <p className="mt-2 text-lg">
+          Total Deployments: {userData.deploymentsCount}
+        </p>
       </div>
     </div>
   );
