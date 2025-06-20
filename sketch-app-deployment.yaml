@@ -1,0 +1,67 @@
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: app-deployment
+  namespace: sketch-app
+  labels:
+    app: sketch-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: sketch-app
+  template:
+    metadata:
+      labels:
+        app: sketch-app
+    spec:
+      containers:
+      - name: sketch-app
+        image: suyashgupta1/sketch-app:latest
+        ports:
+        - containerPort: 3000
+        resources:
+          limits:
+            cpu: "500m"
+            memory: "512Mi"
+          requests:
+            cpu: "200m"
+            memory: "256Mi"
+        env:
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: app-service
+  namespace: sketch-app
+spec:
+  selector:
+    app: sketch-app
+  ports:
+  - port: 80
+    targetPort: 3000
+  type: ClusterIP
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: app-ingress
+  namespace: sketch-app
+  annotations:
+    kubernetes.io/ingress.class: alb
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+spec:
+  rules:
+  - http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: app-service
+            port:
+              number: 80
+    

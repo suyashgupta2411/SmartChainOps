@@ -8,20 +8,47 @@ const Home = () => {
   const [repoUrl, setRepoUrl] = useState("");
   const [envVariables, setEnvVariables] = useState([{ key: "", value: "" }]);
   const [auth] = useRecoilState(authAtom);
-  const [deploymentUrl, setDeploymentUrl] = useState("");
-  const [serviceUrl, setServiceUrl] = useState(""); // For Kubernetes URL
-  const [currentStep, setCurrentStep] = useState(""); // Step name for animation
-  const [error, setError] = useState("");
 
-  const steps = [
+  // Deployment states
+  const [deploymentStatus, setDeploymentStatus] = useState({
+    loading: false,
+    error: null,
+    dockerUrl: null,
+    serviceUrl: null,
+    deploymentId: null,
+    awsConsoleUrl: null,
+  });
+
+  // Backend deployment steps tracking
+  const [backendSteps, setBackendSteps] = useState([]);
+  const [currentStepIndex, setCurrentStepIndex] = useState(-1);
+
+  // Predefined steps (for visual representation)
+  const predefinedSteps = [
+    "Configuring kubectl for EKS...",
+    "Setting up cluster resources...",
     "Cloning repository...",
+    "Setting up Dockerfile...",
     "Building Docker image...",
-    "Pushing Docker image to DockerHub...",
-    "Creating Kubernetes deployment...",
-    "Fetching Kubernetes service URL...",
+    "Pushing to Docker registry...",
+    "Creating Kubernetes namespace...",
+    "Deploying application...",
+    "Waiting for Load Balancer...",
+    "Deployment completed!",
   ];
 
-  // Handle adding a new environment variable
+  // Update current step index when backend steps change
+  useEffect(() => {
+    if (backendSteps.length > 0) {
+      const lastStep = backendSteps[backendSteps.length - 1];
+      const stepIndex = predefinedSteps.findIndex((step) => step === lastStep);
+      if (stepIndex !== -1) {
+        setCurrentStepIndex(stepIndex);
+      }
+    }
+  }, [backendSteps]);
+
+  // Handle adding environment variables
   const handleAddEnv = () => {
     setEnvVariables([...envVariables, { key: "", value: "" }]);
   };
@@ -39,171 +66,244 @@ const Home = () => {
     setEnvVariables(updatedEnv);
   };
 
-  // Save data to localStorage after deployment
-  useEffect(() => {
-    if (deploymentUrl && serviceUrl) {
-      localStorage.setItem("deploymentUrl", deploymentUrl);
-      localStorage.setItem("serviceUrl", serviceUrl);
-    }
-  }, [deploymentUrl, serviceUrl]);
-
-  // Load data from localStorage
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const savedDeploymentUrl = localStorage.getItem("deploymentUrl");
-      const savedServiceUrl = localStorage.getItem("serviceUrl");
-
-      if (savedDeploymentUrl) setDeploymentUrl(savedDeploymentUrl);
-      if (savedServiceUrl) setServiceUrl(savedServiceUrl);
-    }
-  }, []);
-
+  // Deployment handler
   const handleDeploy = async () => {
-    setError("");
-    setDeploymentUrl("");
-    setServiceUrl("");
-    setCurrentStep(steps[0]);
+    setBackendSteps([]); // Reset steps
+    setCurrentStepIndex(-1);
+    setDeploymentStatus({
+      loading: true,
+      error: null,
+      dockerUrl: null,
+      serviceUrl: null,
+      deploymentId: null,
+      awsConsoleUrl: null,
+    });
 
+    // Convert env variables array to object
     const envObject = envVariables.reduce((acc, { key, value }) => {
       if (key && value) acc[key] = value;
       return acc;
     }, {});
 
     try {
-      let stepIndex = 0;
-
-      // Update the current step after each operation
-      const updateStep = () => {
-        if (stepIndex < steps.length) {
-          setCurrentStep(steps[stepIndex]);
-          stepIndex += 1;
-        }
+      // Create a function to update steps that backend can call
+      const updateStep = (step) => {
+        setBackendSteps((prev) => [...prev, step]);
       };
 
-      // Perform the deployment step by step
       const data = await deployService.createDeployment(auth.token, {
         repoUrl,
         envVariables: envObject,
         updateStep,
       });
 
-      if (data.imageUrl && data.serviceUrl) {
-        setDeploymentUrl(data.imageUrl);
-        setServiceUrl(data.serviceUrl);
-        alert("Deployment created successfully!");
-      } else {
-        setError("Unexpected response from the server.");
-      }
-    } catch (err) {
-      setError(
-        "Deployment failed due to an error. Please check logs for more info."
-      );
-    } finally {
-      setCurrentStep("");
+      setDeploymentStatus({
+        loading: false,
+        error: null,
+        dockerUrl: data.imageUrl,
+        serviceUrl: data.serviceUrl,
+        deploymentId: data.deploymentId,
+        awsConsoleUrl: data.awsConsoleUrl,
+      });
+    } catch (error) {
+      setDeploymentStatus({
+        ...deploymentStatus,
+        loading: false,
+        error: error.message || "Deployment failed unexpectedly",
+      });
     }
   };
 
   return (
-    <div
-      className="h-screen bg-cover bg-center bg-no-repeat"
-      style={{ backgroundImage: "url('/assets/bg-image.jpg')" }}
-    >
+    <div className="min-h-screen bg-gray-900 text-white">
       <Navbar />
-      <div className="flex justify-center items-center h-full">
-        <div className="bg-neutral-950 p-8 rounded-lg shadow-lg w-96">
+      <div className="container mx-auto px-4 py-8">
+        <div className="max-w-md mx-auto bg-neutral-900 p-8 rounded-xl shadow-2xl">
+          {/* GitHub Repository Input */}
           <input
             type="text"
-            className="bg-neutral-950 text-white p-2 rounded-full mb-4 w-full"
             placeholder="GitHub Repository URL"
             value={repoUrl}
             onChange={(e) => setRepoUrl(e.target.value)}
+            className="w-full p-3 mb-4 bg-neutral-800 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
 
-          <h3 className="text-white mb-4">Environment Variables</h3>
-          {envVariables.map((env, index) => (
-            <div key={index} className="flex mb-2">
-              <input
-                type="text"
-                placeholder="Key"
-                value={env.key}
-                onChange={(e) => handleEnvChange(index, "key", e.target.value)}
-                className="bg-neutral-950 text-white p-2 rounded-l-md w-1/2"
-              />
-              <input
-                type="text"
-                placeholder="Value"
-                value={env.value}
-                onChange={(e) =>
-                  handleEnvChange(index, "value", e.target.value)
-                }
-                className="bg-neutral-950 text-white p-2 w-1/2"
-              />
-              <button
-                onClick={() => handleRemoveEnv(index)}
-                className="bg-red-600 text-white p-2 rounded-r-md"
-              >
-                Remove
-              </button>
-            </div>
-          ))}
-          <button
-            onClick={handleAddEnv}
-            className="bg-blue-600 text-white p-2 rounded-full w-full mb-4"
-          >
-            Add Environment Variable
-          </button>
+          {/* Environment Variables Section */}
+          <div className="mb-4">
+            <h3 className="text-white mb-2">Environment Variables</h3>
+            {envVariables.map((env, index) => (
+              <div key={index} className="flex mb-2 space-x-2">
+                <input
+                  type="text"
+                  placeholder="Key"
+                  value={env.key}
+                  onChange={(e) =>
+                    handleEnvChange(index, "key", e.target.value)
+                  }
+                  className="w-1/2 p-2 bg-neutral-800 text-white rounded-lg"
+                />
+                <input
+                  type="text"
+                  placeholder="Value"
+                  value={env.value}
+                  onChange={(e) =>
+                    handleEnvChange(index, "value", e.target.value)
+                  }
+                  className="w-1/2 p-2 bg-neutral-800 text-white rounded-lg"
+                />
+                <button
+                  onClick={() => handleRemoveEnv(index)}
+                  className="bg-red-600 text-white p-2 rounded-lg"
+                >
+                  Remove
+                </button>
+              </div>
+            ))}
+            <button
+              onClick={handleAddEnv}
+              className="w-full p-2 bg-gray-600 text-white rounded-lg hover:bg-blue-700"
+            >
+              Add Environment Variable
+            </button>
+          </div>
 
+          {/* Deploy Button */}
           <button
             onClick={handleDeploy}
-            className="bg-orange-700 text-white p-2 rounded-full w-full"
+            disabled={deploymentStatus.loading || !repoUrl}
+            className={`w-full p-3 rounded-lg ${
+              deploymentStatus.loading || !repoUrl
+                ? "bg-gray-500 cursor-not-allowed"
+                : "bg-orange-600 hover:bg-orange-700"
+            } text-white transition-colors`}
           >
-            Deploy
+            {deploymentStatus.loading ? "Deploying..." : "Deploy"}
           </button>
 
-          {/* Animated Steps */}
-          {currentStep && (
-            <div className="mt-4 text-white text-center">
-              <p className="text-orange-500 animate-pulse">{currentStep}</p>
+          {/* Deployment Steps Visualization */}
+          {(deploymentStatus.loading || backendSteps.length > 0) && (
+            <div className="mt-6 bg-neutral-800 p-4 rounded-lg">
+              <h4 className="text-white font-bold mb-4">Deployment Progress</h4>
+              <div className="space-y-4">
+                {predefinedSteps.map((step, index) => (
+                  <div key={index} className="relative">
+                    {/* Timeline line */}
+                    {index < predefinedSteps.length - 1 && (
+                      <div
+                        className={`absolute left-2.5 top-6 w-0.5 h-full ${
+                          index < currentStepIndex
+                            ? "bg-orange-500"
+                            : "bg-gray-600"
+                        }`}
+                      ></div>
+                    )}
+
+                    {/* Step with dot */}
+                    <div className="flex items-start">
+                      <div
+                        className={`w-5 h-5 rounded-full mt-1 flex items-center justify-center ${
+                          index <= currentStepIndex
+                            ? "bg-orange-500"
+                            : "bg-gray-600"
+                        }`}
+                      >
+                        {index < currentStepIndex && (
+                          <svg
+                            className="w-3 h-3 text-white"
+                            fill="currentColor"
+                            viewBox="0 0 20 20"
+                          >
+                            <path
+                              fillRule="evenodd"
+                              d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                              clipRule="evenodd"
+                            ></path>
+                          </svg>
+                        )}
+                      </div>
+
+                      {/* Step text */}
+                      <div className="ml-4">
+                        <span
+                          className={`font-medium ${
+                            index === currentStepIndex
+                              ? "text-orange-500"
+                              : index < currentStepIndex
+                              ? "text-gray-400"
+                              : "text-gray-500"
+                          }`}
+                        >
+                          {step}
+                        </span>
+
+                        {/* Current step animation */}
+                        {index === currentStepIndex && (
+                          <div className="mt-1 flex items-center">
+                            <div className="w-2 h-2 bg-orange-500 rounded-full animate-pulse mr-1"></div>
+                            <div
+                              className="w-2 h-2 bg-orange-500 rounded-full animate-pulse mr-1"
+                              style={{ animationDelay: "0.2s" }}
+                            ></div>
+                            <div
+                              className="w-2 h-2 bg-orange-500 rounded-full animate-pulse"
+                              style={{ animationDelay: "0.4s" }}
+                            ></div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
 
-          {/* Deployment URL */}
-          {deploymentUrl && (
-            <div className="mt-4">
-              <p className="text-white">
-                DockerHub URL:{" "}
-                <a
-                  href={deploymentUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-blue-400 underline"
-                >
-                  {deploymentUrl}
-                </a>
-              </p>
-              <p className="text-white">
-                Kubernetes Service URL:{" "}
-                <a
-                  href={serviceUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-blue-400 underline"
-                >
-                  {serviceUrl}
-                </a>
-              </p>
+          {/* Deployment Results */}
+          {deploymentStatus.dockerUrl && (
+            <div className="mt-4 bg-neutral-800 p-4 rounded-lg">
+              <h4 className="text-white font-bold mb-2">Deployment Details</h4>
+              <div className="space-y-2">
+                <p className="text-gray-300">
+                  <span className="font-semibold">DockerHub URL:</span>{" "}
+                  <a
+                    href={deploymentStatus.dockerUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-blue-400 hover:underline"
+                  >
+                    {deploymentStatus.dockerUrl}
+                  </a>
+                </p>
+                <p className="text-gray-300">
+                  <span className="font-semibold">Service URL:</span>{" "}
+                  <a
+                    href={deploymentStatus.serviceUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-blue-400 hover:underline"
+                  >
+                    {deploymentStatus.serviceUrl}
+                  </a>
+                </p>
+                <p className="text-gray-300">
+                  <span className="font-semibold">AWS Console:</span>{" "}
+                  <a
+                    href={deploymentStatus.awsConsoleUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-blue-400 hover:underline"
+                  >
+                    View in AWS Console
+                  </a>
+                </p>
+              </div>
             </div>
           )}
 
-          {/* Error Message */}
-          {error && (
-            <div className="mt-4">
-              <p className="text-red-400">
-                Error: {error}{" "}
-                <a href="/insights" className="text-blue-400 underline">
-                  View more details
-                </a>
-              </p>
+          {/* Error Handling */}
+          {deploymentStatus.error && (
+            <div className="mt-4 bg-red-900/30 p-3 rounded-lg">
+              <p className="text-red-400">{deploymentStatus.error}</p>
             </div>
           )}
         </div>

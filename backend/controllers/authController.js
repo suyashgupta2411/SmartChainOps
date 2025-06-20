@@ -15,12 +15,8 @@ exports.register = async (req, res) => {
     let user = await User.findOne({ username });
     if (user) return res.status(400).json({ msg: "User already exists" });
 
-    // Hash the password
-    const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(password, salt);
-
-    // Create a new user
-    user = new User({ username, password: hashedPassword });
+    // Create a new user (remove manual password hashing as it's handled by the model middleware)
+    user = new User({ username, password });
     await user.save();
 
     // Generate a JWT token
